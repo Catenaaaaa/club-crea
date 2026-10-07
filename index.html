@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Desafío Club Crea</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1 class="brand-title">CLUB CREA</h1>
+    <p id="status-text" class="subtitle">¡Escaneaste un código del desafío!</p>
+
+    <div class="letters-display" id="letters-container"></div>
+
+    <div id="final-section" class="input-group hidden">
+      <p style="margin-bottom: 12px;"><strong>Ingresá la palabra completa para reclamar tu emblema:</strong></p>
+      <input type="text" id="word-input" placeholder="PALABRA" maxlength="15" autocomplete="off">
+      <br>
+      <button class="btn-primary" onclick="validarPalabra()">DESBLOQUEAR EMBLEMA</button>
+      <p id="error-msg" class="error-text">Palabra incorrecta. ¡Revisá tus letras!</p>
+    </div>
+
+    <div id="reward-section" class="hidden" style="text-align: center;">
+      <h2 class="reward-title">¡DESAFÍO COMPLETADO!</h2>
+      <div class="counter-badge" id="counter-msg">¡Emblema Oficial Desbloqueado!</div>
+      
+      <div style="margin: 20px 0;">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo Club Crea" style="max-width: 100%; width: 220px; border-radius: 16px; box-shadow: 0 10px 25px rgba(56, 189, 248, 0.3);">
+      </div>
+
+      <p class="subtitle">¡Felicitaciones! Ya tenés tu emblema oficial del Club Crea listo para el taller.</p>
+    </div>
+  </div>
+
+  <script>
+    const PALABRA_CORRECTA = "CREADORES";
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashParam = urlParams.get('h');
+
+    const diccionarioHashes = {
+      '2b7e15': { letras: 'C', final: false },
+      '16a8c4': { letras: 'CR', final: false },
+      'd94f28': { letras: 'CRE', final: false },
+      '8c51a0': { letras: 'CREA', final: false },
+      'f49b62': { letras: 'CREAD', final: false },
+      '3e817d': { letras: 'CREADO', final: false },
+      '7a2c5b': { letras: 'CREADOR', final: false },
+      '91f34e': { letras: 'CREADORE', final: false },
+      '5d68b7': { letras: 'CREADORES', final: true }
+    };
+
+    const estadoActual = diccionarioHashes[hashParam] || { letras: '', final: false };
+    const letrasParam = estadoActual.letras;
+    const esFinal = estadoActual.final;
+
+    const lettersContainer = document.getElementById('letters-container');
+    const finalSection = document.getElementById('final-section');
+    const rewardSection = document.getElementById('reward-section');
+    const statusText = document.getElementById('status-text');
+
+    if (letrasParam) {
+      lettersContainer.innerHTML = '';
+      const letrasLimpias = letrasParam.trim().toUpperCase().substring(0, 15);
+      
+      for (let char of letrasLimpias) {
+        const box = document.createElement('div');
+        box.className = 'letter-box';
+        box.textContent = char;
+        lettersContainer.appendChild(box);
+      }
+    }
+
+    if (esFinal || !hashParam) {
+      if (esFinal) {
+        statusText.textContent = "¡Estación final! Ingresá la palabra descubierta.";
+      } else {
+        statusText.textContent = "¡Modo de prueba! Ingresá la palabra para probar el desbloqueo:";
+      }
+      finalSection.classList.remove('hidden');
+    } else if (letrasParam.length > 0) {
+      statusText.textContent = "¡Excelente! Descubriste una nueva letra. Buscá el siguiente QR.";
+    } else {
+      statusText.textContent = "Escaneá los códigos QR repartidos para reunir las letras.";
+    }
+
+    function validarPalabra() {
+      const input = document.getElementById('word-input').value.trim().toUpperCase();
+      const errorMsg = document.getElementById('error-msg');
+      
+      if (input === PALABRA_CORRECTA) {
+        errorMsg.style.display = 'none';
+
+        fetch('/db.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: 'action=registrar'
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.success) {
+            document.getElementById('counter-msg').textContent = `Sos el participante #${data.posicion} en completar el desafío`;
+          }
+        });
+
+        finalSection.classList.add('hidden');
+        lettersContainer.classList.add('hidden');
+        statusText.classList.add('hidden');
+        rewardSection.classList.remove('hidden');
+
+        confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+      } else {
+        errorMsg.style.display = 'block';
+      }
+    }
+  </script>
+</body>
+</html>
+
